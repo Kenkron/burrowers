@@ -194,17 +194,54 @@ public class EntityAIBurrow extends EntityAIBase{
         
         EntityLivingBase target = attacker.getAttackTarget();
         
+        double distance=10;
+        
+        if (attacker.getNavigator().getPath()!=null &&
+        		attacker.getNavigator().getPath().getFinalPathPoint()!=null){
+        	PathPoint destination = this.attacker.getNavigator().getPath().getFinalPathPoint();
+        
+        	distance = target.getDistanceSq(destination.xCoord, destination.yCoord, destination.zCoord);
+        }
+        if (this.digTick<=0)
+        	System.out.println("distance to target: "+distance);
+        
         if (this.digTick <= 0 &&
         		target!=null &&
-        		failedPathFindingPenalty>0)
+        		distance>2)
         {
+        	System.out.println("time to dig!");
             this.digTick = 20;
             
             int x=(int)Math.floor(attacker.posX);            
             int y=(int)Math.floor(attacker.posY);            
             int z=(int)Math.floor(attacker.posZ);
             
-            int monsterDirection = Direction.getMovementDirection(attacker.getLookVec().xCoord, attacker.getLookVec().zCoord);
+            double deltax = target.posX-attacker.posX;
+            double deltaz = target.posZ-attacker.posZ;
+            
+            int monsterDirection=0;
+            
+            if(Math.abs(deltax)>Math.abs(deltaz)){
+            	//use x
+            	if (x>0){
+            		//east
+            		monsterDirection=3;
+            	}else{
+            		//west
+            		monsterDirection=1;
+            	}
+            }else{
+            	//use z
+            	if (z>0){
+            		//south
+            		monsterDirection=0;
+            	}else{
+            		//north
+            		monsterDirection=2;
+            	}
+            }
+            
+            //int monsterDirection = Direction.getMovementDirection(attacker..xCoord, attacker.getLookVec().zCoord);
             
             int xoff = Direction.offsetX[monsterDirection];
             int zoff = Direction.offsetZ[monsterDirection];
@@ -220,16 +257,13 @@ public class EntityAIBurrow extends EntityAIBase{
             
             //try the eye level block first
             if (!eyeLevel.isAir(world, x+xoff, y+1, z+zoff)){
+            	System.out.println("I need to see");
             	breakBlock(world, eyeLevel, x+xoff, y+1, z+zoff);
-            }
-            //next the foot level
-            else if (!(targety>y)&&
-            		!(world.isAirBlock(x+xoff, y, z+zoff))){
-            	breakBlock(world,footLevel,x+xoff,y,z+zoff);
             }
             //next above
             else if (targety>y&&
             		!(above.isAir(world, x, y+2, z))){
+            	System.out.println("I will jump to you");
             	breakBlock(world, above, x, y+2, z);
             }
             //then the above forward
@@ -238,9 +272,16 @@ public class EntityAIBurrow extends EntityAIBase{
             	breakBlock(world, aboveForeward, x+xoff, y+2, z+zoff);
             	
             }
+            //next the foot level
+            else if (!(targety>y)&&
+            		!(world.isAirBlock(x+xoff, y, z+zoff))){
+            	System.out.println("my feet need room");
+            	breakBlock(world,footLevel,x+xoff,y,z+zoff);
+            }
             //then the below corner
             else if (targety>y &&
             		!floorForward.isAir(world, x+xoff, y-1, z+zoff)){
+            	System.out.println("hat corners");
             	breakBlock(world, floorForward, x+xoff, y-1, z+zoff);
             }
         }
