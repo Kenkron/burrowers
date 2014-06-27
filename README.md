@@ -3,7 +3,7 @@ burrowers
 
 **Minecraft Mod for Creatures that can Destroy Terrain**
 
-For too long, the players of the overworld have been out of our reach.  Hiding behind wooden doors, and meter-thick walls of stone, the players have grown lazy an weak, imagining that they will never again need to pay mind to we, the most wreched of night creatures.
+For too long, the players of the overworld have been out of our reach.  Hiding behind wooden doors, and meter-thick walls of stone, the players have grown lazy and weak, imagining that they will never again need to pay mind to we, the most wreched of night creatures.
 
 *But they are wrong*
 
