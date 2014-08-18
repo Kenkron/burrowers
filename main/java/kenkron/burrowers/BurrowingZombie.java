@@ -18,7 +18,7 @@ public class BurrowingZombie extends EntityZombie{
 
 	public BurrowingZombie(World par1World) {
 		super(par1World);
-        this.tasks.addTask(1, new EntityAIBurrow(this, EntityPlayer.class, 1.0D, false));
+        this.tasks.addTask(3, new EntityAIBurrow(this, EntityPlayer.class, 1.0D, false));
 	}
 
 }

@@ -1,18 +1,24 @@
 package kenkron.burrowers;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+
+import javax.vecmath.Point3d;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
+import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAIBase;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.pathfinding.PathEntity;
 import net.minecraft.pathfinding.PathPoint;
 import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import net.minecraftforge.event.ForgeEventFactory;
 
 /**This AI represents a burrowing task for the mobs that 
  * just can't navigate to the player, but */
@@ -45,6 +51,10 @@ public class EntityAIBurrow extends EntityAIBase{
 	
 	/**the time it takes a zombie to dig*/
 	public static final int DIG_TIME=20;
+	
+	/**the block the ai is trying to destroy*/
+	int[] targetBlockLocation = new int[3];
+    int digProgress=0;
 	
     public EntityAIBurrow(EntityCreature par1EntityCreature, Class par2Class, double speed, boolean persistant)
     {
@@ -202,95 +212,134 @@ public class EntityAIBurrow extends EntityAIBase{
         
         	distance = target.getDistanceSq(destination.xCoord, destination.yCoord, destination.zCoord);
         }
-        if (this.digTick<=0)
-        	System.out.println("distance to target: "+distance);
         
-        if (this.digTick <= 0 &&
-        		target!=null &&
+        if (target!=null &&
         		distance>2)
         {
-        	System.out.println("time to dig!");
-            this.digTick = 20;
-            
-            int x=(int)Math.floor(attacker.posX);            
-            int y=(int)Math.floor(attacker.posY);            
-            int z=(int)Math.floor(attacker.posZ);
-            
-            double deltax = target.posX-attacker.posX;
-            double deltaz = target.posZ-attacker.posZ;
-            
-            int monsterDirection=0;
-            
-            if(Math.abs(deltax)>Math.abs(deltaz)){
-            	//use x
-            	if (x>0){
-            		//east
-            		monsterDirection=3;
-            	}else{
-            		//west
-            		monsterDirection=1;
-            	}
-            }else{
-            	//use z
-            	if (z>0){
-            		//south
-            		monsterDirection=0;
-            	}else{
-            		//north
-            		monsterDirection=2;
-            	}
-            }
-            
-            //int monsterDirection = Direction.getMovementDirection(attacker..xCoord, attacker.getLookVec().zCoord);
-            
-            int xoff = Direction.offsetX[monsterDirection];
-            int zoff = Direction.offsetZ[monsterDirection];
-            
-            Block above = world.getBlock(x,y+2,z);
-            Block aboveForeward = world.getBlock(x+xoff,y+2,z+zoff);
-            Block eyeLevel = world.getBlock(x+xoff,y+1,z+zoff);
-            Block footLevel = world.getBlock(x+xoff,y,z+zoff);
-            Block floorForward = world.getBlock(x+xoff, y-1, z+zoff);
-            		
-            int targety = (int)Math.floor(target.posY);
-            //it's time to dig!
-            
-            //try the eye level block first
-            if (!eyeLevel.isAir(world, x+xoff, y+1, z+zoff)){
-            	System.out.println("I need to see");
-            	breakBlock(world, eyeLevel, x+xoff, y+1, z+zoff);
-            }
-            //next above
-            else if (targety>y&&
-            		!(above.isAir(world, x, y+2, z))){
-            	System.out.println("I will jump to you");
-            	breakBlock(world, above, x, y+2, z);
-            }
-            //then the above forward
-            else if (targety>y &&
-            		!aboveForeward.isAir(world, x+xoff, y+2, z+zoff)){
-            	breakBlock(world, aboveForeward, x+xoff, y+2, z+zoff);
-            	
-            }
-            //next the foot level
-            else if (!(targety>y)&&
-            		!(world.isAirBlock(x+xoff, y, z+zoff))){
-            	System.out.println("my feet need room");
-            	breakBlock(world,footLevel,x+xoff,y,z+zoff);
-            }
-            //then the below corner
-            else if (targety>y &&
-            		!floorForward.isAir(world, x+xoff, y-1, z+zoff)){
-            	System.out.println("hat corners");
-            	breakBlock(world, floorForward, x+xoff, y-1, z+zoff);
-            }
+        	int[] newTarget = chooseTargetBlock(target);
+        	if (Arrays.equals(newTarget, this.targetBlockLocation)){
+        		Block targetBlock=world.getBlock(targetBlockLocation[0], targetBlockLocation[1], targetBlockLocation[2]);
+        		if (digProgress>=targetBlock.getExplosionResistance(null)){
+        			breakBlock(world, targetBlock,targetBlockLocation[0], targetBlockLocation[1], targetBlockLocation[2]);
+            		digProgress=0;
+        		} else {
+        			world.destroyBlockInWorldPartially(
+        					Block.getIdFromBlock(targetBlock), targetBlockLocation[0], targetBlockLocation[1], targetBlockLocation[2], 1);
+        			digProgress++;
+        		}
+        	}else{
+        		digProgress=0;
+        	}
         }
     }
     
+    public int[] chooseTargetBlock(EntityLivingBase target){
+    	int x=(int)Math.floor(attacker.posX);            
+        int y=(int)Math.floor(attacker.posY);            
+        int z=(int)Math.floor(attacker.posZ);
+        
+        double deltax = target.posX-attacker.posX;
+        double deltaz = target.posZ-attacker.posZ;
+        
+        int monsterDirection=0;
+        
+        if(Math.abs(deltax)>Math.abs(deltaz)){
+        	//use x
+        	if (deltax>0){
+        		//east
+        		monsterDirection=3;
+        	}else{
+        		//west
+        		monsterDirection=1;
+        	}
+        }else{
+        	//use z
+        	if (deltaz>0){
+        		//south
+        		monsterDirection=0;
+        	}else{
+        		//north
+        		monsterDirection=2;
+        	}
+        }
+        
+        //int monsterDirection = Direction.getMovementDirection(attacker..xCoord, attacker.getLookVec().zCoord);
+        
+        int xoff = Direction.offsetX[monsterDirection];
+        int zoff = Direction.offsetZ[monsterDirection];
+        
+        Block above = world.getBlock(x,y+2,z);
+        Block aboveForeward = world.getBlock(x+xoff,y+2,z+zoff);
+        Block eyeLevel = world.getBlock(x+xoff,y+1,z+zoff);
+        Block footLevel = world.getBlock(x+xoff,y,z+zoff);
+        Block floor = world.getBlock(x, y-1, z);
+        		
+        int targety = (int)Math.round(target.posY);
+        //it's time to dig!
+        
+        int[] targetBlock = null;
+        
+        //try the eye level block first
+        if (!eyeLevel.isAir(world, x+xoff, y+1, z+zoff)){
+        	System.out.println("I need to see");
+        	targetBlock = make3(x+xoff,y+1,z+zoff);
+        }
+        //next above
+        else if (targety>y&&
+        		!(above.isAir(world, x, y+2, z))){
+        	System.out.println("I will jump to you");
+        	targetBlock=make3(x, y+2, z);
+        }
+        //then the above forward
+        else if (targety>y &&
+        		!aboveForeward.isAir(world, x+xoff, y+2, z+zoff)){
+        	System.out.println("hate corners. Me: "+y+" target: "+targety);
+        	targetBlock = make3(x+xoff, y+2, z+zoff);
+        }
+        //next the foot level
+        else if (!(targety>y)&&
+        		!(world.isAirBlock(x+xoff, y, z+zoff))){
+        	System.out.println("my feet need room");
+        	targetBlock=make3(x+xoff,y,z+zoff);
+        }
+        //then below
+        else if (targety<y){
+        	System.out.println("need to go down!");
+        	targetBlock = make3(x,y-1,z);
+        } else {
+        	targetBlock = null;
+        }
+        
+        return targetBlock;
+    }
+    
+    public int[] make3(int x, int y, int z){
+    	int[] tri = {x,y,z};
+    	return tri;
+    }
+    
     public void breakBlock(World w, Block b, int x,int y,int z){
+    	System.out.println("breakingBlock: "+x+", "+y+", "+z+": "+b.getLocalizedName());
+    	
     	ArrayList<ItemStack> drops=b.getDrops(world, x, y, z, world.getBlockMetadata(x, y, z), 0);
     	b.dropBlockAsItem(w, x, y, z, world.getBlockMetadata(x, y, z), 0);
     	world.removeTileEntity(x, y, z);
     	world.setBlockToAir(x, y, z);
+    	
+//    	int fortune = 0;
+//    	boolean silkTouch=false;
+//    	int metadata = w.getBlockMetadata(x, y, z);
+//    	ArrayList<ItemStack> drops = b.getDrops(w, x, y, z, metadata, fortune);
+//    	ForgeEventFactory.fireBlockHarvesting(drops, w, b, x, y, z, metadata, fortune, 1, false, null);
+    	
+//    	b.breakBlock(w, x, y, z, b, 0);
+    }
+    
+    //for now, all Zombies can break all blocks
+    public boolean canBreakBlock(Block block)
+    {
+    	//block.getExplosionResistance(null);
+    	return true;
+        //return block == Blocks.obsidian ? this.toolMaterial.getHarvestLevel() == 3 : (block != Blocks.diamond_block && block != Blocks.diamond_ore ? (block != Blocks.emerald_ore && block != Blocks.emerald_block ? (block != Blocks.gold_block && block != Blocks.gold_ore ? (block != Blocks.iron_block && block != Blocks.iron_ore ? (block != Blocks.lapis_block && block != Blocks.lapis_ore ? (block != Blocks.redstone_ore && block != Blocks.lit_redstone_ore ? (block.getMaterial() == Material.rock ? true : (block.getMaterial() == Material.iron ? true : block.getMaterial() == Material.anvil)) : this.toolMaterial.getHarvestLevel() >= 2) : this.toolMaterial.getHarvestLevel() >= 1) : this.toolMaterial.getHarvestLevel() >= 1) : this.toolMaterial.getHarvestLevel() >= 2) : this.toolMaterial.getHarvestLevel() >= 2) : this.toolMaterial.getHarvestLevel() >= 2);
     }
 }

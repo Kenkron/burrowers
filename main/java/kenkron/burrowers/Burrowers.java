@@ -22,9 +22,9 @@ public class Burrowers
 		EntityList.addMapping(BurrowingZombie.class, "Burrower", burrowerID, 0x0F7F0F, 0x3F7F3F);
 //		EntityRegistry.registerGlobalEntityID(
 //		BurrowingZombie.class, "Burrower", burrowerID);
-EntityRegistry.addSpawn(
-		BurrowingZombie.class, 100, 10, 10, 
-		EnumCreatureType.monster);
+		EntityRegistry.addSpawn(
+				BurrowingZombie.class, 100, 10, 10, 
+				EnumCreatureType.monster);
     }
     
 	protected static int startEntityID=0; 
